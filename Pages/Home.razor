@@ -1,0 +1,77 @@
+﻿@page "/"
+@using System.Net.Http.Json
+@using BlazorViaCep.Models
+@inject HttpClient Http
+
+<PageTitle>Consulta ViaCEP</PageTitle>
+
+<h3>Consulta de Endereço por CEP</h3>
+
+<div style="margin-bottom: 20px;">
+    <label for="inputCep">Insere o CEP (apenas 8 números): </label>
+    <input id="inputCep" @bind="cepInput" type="text" maxlength="8" style="width: 120px;" />
+    <button @onclick="BuscarCep">Procurar</button>
+</div>
+
+@if (carregando)
+{
+    <p>A carregar os dados da API...</p>
+}
+else if (endereco != null)
+{
+    if (endereco.Erro)
+    {
+        <p style="color: red;">O CEP introduzido não foi encontrado.</p>
+    }
+    else
+    {
+        <div style="background-color: #f4f4f4; padding: 15px; border-radius: 8px; max-width: 400px;">
+            <p><strong>CEP:</strong> @endereco.Cep</p>
+            <p><strong>Logradouro:</strong> @endereco.Logradouro</p>
+            <p><strong>Bairro:</strong> @endereco.Bairro</p>
+            <p><strong>Cidade / UF:</strong> @endereco.Localidade / @endereco.Uf</p>
+        </div>
+    }
+}
+else if (erroAcesso)
+{
+    <p style="color: red;">Formato de CEP inválido ou erro de comunicação com a API.</p>
+}
+
+@code {
+    private string cepInput = string.Empty;
+    private Endereco? endereco;
+    private bool carregando = false;
+    private bool erroAcesso = false;
+
+    private async Task BuscarCep()
+    {
+        // Limpa formatações e valida se tem 8 dígitos
+        var cepLimpo = new string(cepInput.Where(char.IsDigit).ToArray());
+        
+        if (cepLimpo.Length != 8)
+        {
+            erroAcesso = true;
+            endereco = null;
+            return;
+        }
+
+        carregando = true;
+        erroAcesso = false;
+        endereco = null;
+
+        try
+        {
+            // Consome o endpoint do ViaCEP
+            endereco = await Http.GetFromJsonAsync<Endereco>($"https://viacep.com.br/ws/{cepLimpo}/json/");
+        }
+        catch
+        {
+            erroAcesso = true;
+        }
+        finally
+        {
+            carregando = false;
+        }
+    }
+}
